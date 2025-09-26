@@ -40,9 +40,13 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 - **详细日志**: 便于调试和监控
 - **灵活配置**: 支持环境变量和命令行参数
 
-## 快速开始
+## 📦 安装与更新
 
-### 推荐方式：使用 npx（无需安装）
+这个项目使用 **语义化版本** 和 **自动发布系统**，每次更新都会自动发布到 npm。
+
+### 📥 安装方式
+
+**推荐方式：使用 npx（无需安装）**
 
 1. **获取 YApi Token**：登录你的 YApi 平台，在项目设置中获取 Token
 2. **配置 Cursor**：在 Cursor 设置中添加 MCP 服务器：
@@ -253,3 +257,37 @@ YAPI_LOG_LEVEL=info         # 日志级别：debug, info, warn, error, none
 | 团队共享 | npx + 环境变量        | 配置统一，易于管理 |
 | 开发调试 | 本地安装 + SSE 模式   | 便于调试和修改代码 |
 | 企业部署 | 本地安装 + stdio 模式 | 性能更好，更稳定   |
+
+## 🚀 发布与贡献
+
+### 自动发布系统
+
+本项目使用 **GitHub Actions** 和 **semantic-release** 实现自动化版本管理和发布：
+
+- 🏷️ **语义化版本**：根据提交信息自动确定版本号
+- 📦 **自动发布**：提交到 `main` 分支后自动发布到 npm
+- 📄 **自动生成 CHANGELOG**：根据提交历史自动生成变更日志
+- 🏷️ **GitHub Release**：自动创建 GitHub Release
+
+### 提交信息规范
+
+请使用 [Conventional Commits](https://www.conventionalcommits.org/) 格式：
+
+- `feat:` - 新功能 (触发 **minor** 版本更新)
+- `fix:` - Bug 修复 (触发 **patch** 版本更新)
+- `docs:` - 文档更新 (触发 **patch** 版本更新)
+- `perf:` - 性能优化 (触发 **patch** 版本更新)
+- `refactor:` - 代码重构 (触发 **patch** 版本更新)
+- `chore:` - 构建过程或辅助工具的变更 (触发 **patch** 版本更新)
+
+### 开发贡献流程
+
+1. Fork 本仓库
+2. 创建功能分支：`git checkout -b feature/your-feature`
+3. 提交更改：`git commit -m "feat: add new feature"`
+4. 推送分支：`git push origin feature/your-feature`
+5. 创建 Pull Request
+
+## 📄 许可证
+
+MIT License - 查看 [LICENSE](LICENSE) 文件了解详情
