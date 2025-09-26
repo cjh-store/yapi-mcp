@@ -40,17 +40,17 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build project
-        run: pnpm run build
+        run: npm run build
 
       - name: Run tests (if available)
         run: |
           if [ -f "package.json" ] && grep -q '"test"' package.json; then
-            pnpm run test
+            npm run test
           else
             echo "No tests configured, skipping..."
           fi
