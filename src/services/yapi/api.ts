@@ -268,6 +268,92 @@ export class YApiService {
   }
 
   /**
+   * 获取项目完整接口菜单（使用list_menu接口）
+   * @param projectId 项目ID
+   */
+  async getInterfaceMenu(projectId: string): Promise<any[]> {
+    try {
+      this.logger.debug(`获取项目完整接口菜单，projectId=${projectId}`);
+      const response = await this.request<any>("/api/interface/list_menu", { project_id: projectId }, projectId);
+
+      if (response.errcode !== 0) {
+        throw new Error(response.errmsg || "获取接口菜单失败");
+      }
+
+      return response.data || [];
+    } catch (error) {
+      this.logger.error(`获取接口菜单失败, projectId=${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 按接口名称关键字搜索
+   * @param options 搜索选项
+   */
+  async searchApisByName(options: {
+    nameKeyword: string;     // 接口名称关键字（必填）
+    projectKeyword?: string; // 项目关键字
+    page?: number;           // 当前页码，默认1
+    limit?: number;          // 每页数量，默认20
+    maxProjects?: number;    // 最多搜索多少个项目，默认5个
+  }): Promise<{
+    total: number;
+    list: Array<ApiSearchResultItem & { project_name?: string; cat_name?: string }>;
+  }> {
+    const {
+      nameKeyword,
+      projectKeyword,
+      page = 1,
+      limit = 20,
+      maxProjects = 5
+    } = options;
+
+    this.logger.debug(`按名称搜索接口，关键字: ${nameKeyword}, 项目关键字: ${projectKeyword || '无'}`);
+
+    return await this.searchApis({
+      projectKeyword,
+      nameKeyword: [nameKeyword],
+      page,
+      limit,
+      maxProjects
+    });
+  }
+
+  /**
+   * 按接口路径关键字搜索
+   * @param options 搜索选项
+   */
+  async searchApisByPath(options: {
+    pathKeyword: string;     // 接口路径关键字（必填）
+    projectKeyword?: string; // 项目关键字
+    page?: number;           // 当前页码，默认1
+    limit?: number;          // 每页数量，默认20
+    maxProjects?: number;    // 最多搜索多少个项目，默认5个
+  }): Promise<{
+    total: number;
+    list: Array<ApiSearchResultItem & { project_name?: string; cat_name?: string }>;
+  }> {
+    const {
+      pathKeyword,
+      projectKeyword,
+      page = 1,
+      limit = 20,
+      maxProjects = 5
+    } = options;
+
+    this.logger.debug(`按路径搜索接口，关键字: ${pathKeyword}, 项目关键字: ${projectKeyword || '无'}`);
+
+    return await this.searchApis({
+      projectKeyword,
+      pathKeyword: [pathKeyword],
+      page,
+      limit,
+      maxProjects
+    });
+  }
+
+  /**
    * 搜索接口
    */
   async searchApis(options: {
@@ -411,30 +497,71 @@ export class YApiService {
   }
 
   /**
-   * 使用单个关键字在单个项目中搜索接口
+   * 使用菜单API在单个项目中搜索接口（改进版本）
    */
   private async searchWithSingleKeyword(
-    projectId: string, 
-    queryParams: { keyword?: string; path?: string; tag?: string[] }, 
-    page: number, 
+    projectId: string,
+    queryParams: { keyword?: string; path?: string; tag?: string[] },
+    page: number,
     limit: number
   ): Promise<{ total: number; list: any[] }> {
     try {
-      // 构建查询参数
-      const params = {
-        project_id: projectId,
-        page,
-        limit,
-        ...queryParams
-      };
-      
-      const response = await this.request<ApiSearchResponse>("/api/interface/list", params, projectId);
-      
-      if (response.errcode !== 0) {
-        throw new Error(response.errmsg || "搜索接口失败");
+      // 使用菜单API获取完整接口数据
+      const menuData = await this.getInterfaceMenu(projectId);
+
+      // 将分类数据展开为平坦的接口列表
+      let allInterfaces: any[] = [];
+      for (const category of menuData) {
+        if (category.list && Array.isArray(category.list)) {
+          // 为每个接口添加分类信息
+          const interfacesWithCatInfo = category.list.map((api: any) => ({
+            ...api,
+            cat_name: category.name,
+            catid: category._id
+          }));
+          allInterfaces = [...allInterfaces, ...interfacesWithCatInfo];
+        }
       }
-      
-      return response.data;
+
+      // 应用搜索过滤条件
+      let filteredResults = allInterfaces;
+
+      // 按接口名称关键字过滤
+      if (queryParams.keyword) {
+        const keyword = queryParams.keyword.toLowerCase();
+        filteredResults = filteredResults.filter(item =>
+          item.title && item.title.toLowerCase().includes(keyword)
+        );
+      }
+
+      // 按接口路径关键字过滤
+      if (queryParams.path) {
+        const pathKeyword = queryParams.path.toLowerCase();
+        filteredResults = filteredResults.filter(item =>
+          item.path && item.path.toLowerCase().includes(pathKeyword)
+        );
+      }
+
+      // 按标签关键字过滤
+      if (queryParams.tag && queryParams.tag.length > 0) {
+        const tagKeywords = queryParams.tag.map(t => t.toLowerCase());
+        filteredResults = filteredResults.filter(item => {
+          if (!item.tag || !Array.isArray(item.tag)) return false;
+          return item.tag.some(tag =>
+            tagKeywords.some(keyword =>
+              String(tag).toLowerCase().includes(keyword)
+            )
+          );
+        });
+      }
+
+      // 按ID降序排序，优先显示最新接口
+      filteredResults.sort((a, b) => (b._id || 0) - (a._id || 0));
+
+      return {
+        total: filteredResults.length,
+        list: filteredResults
+      };
     } catch (error) {
       this.logger.debug(`在项目 ${projectId} 中使用关键字 ${JSON.stringify(queryParams)} 搜索接口失败:`, error);
       // 搜索失败时返回空结果，而非抛出异常中断整个搜索流程

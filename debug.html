@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YApi MCP 调试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .tool-section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .tool-section h3 {
+            margin-top: 0;
+            color: #666;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        .copy-btn:hover {
+            opacity: 1;
+            background-color: #005a87;
+        }
+        .copy-btn:active {
+            background-color: #004066;
+        }
+        .result.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 YApi MCP 调试工具</h1>
+
+    <div class="container">
+
+        <div class="tool-section">
+            <h3>📋 获取接口详情 (yapi_get_api_desc)</h3>
+            <div class="form-group">
+                <label for="detail-project">项目ID:</label>
+                <input type="text" id="detail-project" value="465" placeholder="项目ID">
+            </div>
+            <div class="form-group">
+                <label for="detail-api">接口ID:</label>
+                <input type="text" id="detail-api" value="30869" placeholder="接口ID">
+            </div>
+            <button onclick="getApiDetail()">📋 获取详情</button>
+            <div id="detail-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="tool-section">
+            <h3>📂 获取项目列表 (yapi_list_projects)</h3>
+            <button onclick="listProjects()">📂 获取项目列表</button>
+            <div id="projects-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="tool-section">
+            <h3>📝 按接口名称搜索 (yapi_search_by_name)</h3>
+            <div class="form-group">
+                <label for="search-by-name-keyword">接口名称关键字（必填）:</label>
+                <input type="text" id="search-by-name-keyword" value="用户" placeholder="输入接口名称关键字">
+            </div>
+            <div class="form-group">
+                <label for="search-by-name-project">项目关键字（可选）:</label>
+                <input type="text" id="search-by-name-project" placeholder="项目名称关键字">
+            </div>
+            <div class="form-group">
+                <label for="search-by-name-limit">返回数量限制:</label>
+                <input type="number" id="search-by-name-limit" value="20" min="1" max="100">
+            </div>
+            <button onclick="searchByName()">📝 按名称搜索</button>
+            <div id="search-by-name-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="tool-section">
+            <h3>🔗 按接口路径搜索 (yapi_search_by_path)</h3>
+            <div class="form-group">
+                <label for="search-by-path-keyword">接口路径关键字（必填）:</label>
+                <input type="text" id="search-by-path-keyword" value="/tutoring" placeholder="输入接口路径关键字">
+            </div>
+            <div class="form-group">
+                <label for="search-by-path-project">项目关键字（可选）:</label>
+                <input type="text" id="search-by-path-project" placeholder="项目名称关键字">
+            </div>
+            <div class="form-group">
+                <label for="search-by-path-limit">返回数量限制:</label>
+                <input type="number" id="search-by-path-limit" value="20" min="1" max="100">
+            </div>
+            <button onclick="searchByPath()">🔗 按路径搜索</button>
+            <div id="search-by-path-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:3390';
+
+        // 添加复制按钮到结果区域
+        function addCopyButton(resultDiv, jsonData) {
+            // 移除已存在的复制按钮
+            const existingBtn = resultDiv.querySelector('.copy-btn');
+            if (existingBtn) {
+                existingBtn.remove();
+            }
+
+            // 创建复制按钮
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = '📋 复制';
+            copyBtn.onclick = () => copyToClipboard(jsonData, copyBtn);
+
+            resultDiv.appendChild(copyBtn);
+        }
+
+        // 复制到剪贴板
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = button.textContent;
+                button.textContent = '✅ 已复制';
+                button.style.backgroundColor = '#28a745';
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '#007cba';
+                }, 2000);
+            } catch (err) {
+                console.error('复制失败:', err);
+                button.textContent = '❌ 复制失败';
+                button.style.backgroundColor = '#dc3545';
+
+                setTimeout(() => {
+                    button.textContent = '📋 复制';
+                    button.style.backgroundColor = '#007cba';
+                }, 2000);
+            }
+        }
+
+        async function callMcpTool(toolName, args = {}) {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/debug`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        tool: toolName,
+                        args: args
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(`API错误: ${data.error}`);
+                }
+
+                return data;
+            } catch (error) {
+                console.error('调用失败:', error);
+                throw error;
+            }
+        }
+
+
+        async function getApiDetail() {
+            const resultDiv = document.getElementById('detail-result');
+            const projectId = document.getElementById('detail-project').value.trim();
+            const apiId = document.getElementById('detail-api').value.trim();
+
+            if (!projectId || !apiId) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请输入项目ID和接口ID';
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 获取详情中...';
+
+            try {
+                const result = await callMcpTool('yapi_get_api_desc', {
+                    projectId: projectId,
+                    apiId: apiId
+                });
+
+                const jsonText = JSON.stringify(result.data, null, 2);
+                resultDiv.className = 'result success';
+                resultDiv.textContent = jsonText;
+                addCopyButton(resultDiv, jsonText);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 获取失败: ${error.message}`;
+            }
+        }
+
+        async function listProjects() {
+            const resultDiv = document.getElementById('projects-result');
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 获取项目列表中...';
+
+            try {
+                const result = await callMcpTool('yapi_list_projects');
+
+                const jsonText = JSON.stringify(result.data, null, 2);
+                resultDiv.className = 'result success';
+                resultDiv.textContent = jsonText;
+                addCopyButton(resultDiv, jsonText);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 获取失败: ${error.message}`;
+            }
+        }
+
+        async function searchByName() {
+            const resultDiv = document.getElementById('search-by-name-result');
+            const nameKeyword = document.getElementById('search-by-name-keyword').value.trim();
+            const projectKeyword = document.getElementById('search-by-name-project').value.trim();
+            const limit = parseInt(document.getElementById('search-by-name-limit').value);
+
+            if (!nameKeyword) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请输入接口名称关键字';
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 按名称搜索中...';
+
+            try {
+                const args = { nameKeyword, limit };
+                if (projectKeyword) args.projectKeyword = projectKeyword;
+
+                const result = await callMcpTool('yapi_search_by_name', args);
+
+                const jsonText = JSON.stringify(result.data, null, 2);
+                resultDiv.className = 'result success';
+                resultDiv.textContent = jsonText;
+                addCopyButton(resultDiv, jsonText);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 按名称搜索失败: ${error.message}`;
+            }
+        }
+
+        async function searchByPath() {
+            const resultDiv = document.getElementById('search-by-path-result');
+            const pathKeyword = document.getElementById('search-by-path-keyword').value.trim();
+            const projectKeyword = document.getElementById('search-by-path-project').value.trim();
+            const limit = parseInt(document.getElementById('search-by-path-limit').value);
+
+            if (!pathKeyword) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请输入接口路径关键字';
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = '🔄 按路径搜索中...';
+
+            try {
+                const args = { pathKeyword, limit };
+                if (projectKeyword) args.projectKeyword = projectKeyword;
+
+                const result = await callMcpTool('yapi_search_by_path', args);
+
+                const jsonText = JSON.stringify(result.data, null, 2);
+                resultDiv.className = 'result success';
+                resultDiv.textContent = jsonText;
+                addCopyButton(resultDiv, jsonText);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 按路径搜索失败: ${error.message}`;
+            }
+        }
+
+        // 页面加载时显示连接状态
+        window.addEventListener('load', function() {
+            console.log('🚀 YApi MCP 调试工具已加载');
+            console.log(`📡 服务器地址: ${SERVER_URL}`);
+        });
+    </script>
+</body>
+</html>

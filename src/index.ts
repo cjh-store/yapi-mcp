@@ -38,7 +38,8 @@ export async function startServer(): Promise<void> {
   logger.info("\n可用工具:");
   logger.info("- yapi_get_api_desc: 获取YApi接口信息");
   logger.info("- yapi_save_api: 新增或更新YApi接口");
-  logger.info("- yapi_search_apis: 搜索YApi接口");
+  logger.info("- yapi_search_by_name: 按接口名称关键字搜索YApi接口");
+  logger.info("- yapi_search_by_path: 按接口路径关键字搜索YApi接口");
   logger.info("- yapi_list_projects: 列出YApi的项目ID和项目名称");
   logger.info("- yapi_get_categories: 获取YApi项目下的接口分类列表");
 }

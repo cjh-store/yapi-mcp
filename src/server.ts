@@ -101,8 +101,104 @@ export class YapiMcpServer {
     }
   }
 
+  // 格式化搜索结果的辅助方法
+  private formatSearchResults(searchResults: any, searchCondition: string, projectKeyword?: string) {
+    // 按项目分组整理结果
+    const apisByProject: Record<string, {
+      projectName: string,
+      apis: Array<{
+        id: string,
+        title: string,
+        path: string,
+        method: string,
+        catName: string,
+        createTime: string,
+        updateTime: string
+      }>
+    }> = {};
+
+    // 格式化搜索结果
+    searchResults.list.forEach((api: any) => {
+      const projectId = String(api.project_id);
+      const projectName = api.project_name || `未知项目(${projectId})`;
+
+      if (!apisByProject[projectId]) {
+        apisByProject[projectId] = {
+          projectName,
+          apis: []
+        };
+      }
+
+      apisByProject[projectId].apis.push({
+        id: api._id,
+        title: api.title,
+        path: api.path,
+        method: api.method,
+        catName: api.cat_name || '未知分类',
+        createTime: new Date(api.add_time).toLocaleString(),
+        updateTime: new Date(api.up_time).toLocaleString()
+      });
+    });
+
+    // 构建响应内容
+    let responseContent = `共找到 ${searchResults.total} 个符合条件的接口（已限制显示 ${searchResults.list.length} 个）\n\n`;
+
+    // 添加搜索条件说明
+    responseContent += "搜索条件:\n";
+    responseContent += `- ${searchCondition}\n`;
+    if (projectKeyword) responseContent += `- 项目关键字: ${projectKeyword}\n`;
+    responseContent += "\n";
+
+    // 按项目分组展示结果
+    Object.values(apisByProject).forEach(projectGroup => {
+      responseContent += `## 项目: ${projectGroup.projectName} (${projectGroup.apis.length}个接口)\n\n`;
+
+      if (projectGroup.apis.length <= 10) {
+        // 少量接口，展示详细信息
+        projectGroup.apis.forEach(api => {
+          responseContent += `### ${api.title} (${api.method} ${api.path})\n\n`;
+          responseContent += `- 接口ID: ${api.id}\n`;
+          responseContent += `- 所属分类: ${api.catName}\n`;
+          responseContent += `- 更新时间: ${api.updateTime}\n\n`;
+        });
+      } else {
+        // 大量接口，展示简洁表格
+        responseContent += "| 接口ID | 接口名称 | 请求方式 | 接口路径 | 所属分类 |\n";
+        responseContent += "| ------ | -------- | -------- | -------- | -------- |\n";
+
+        projectGroup.apis.forEach(api => {
+          responseContent += `| ${api.id} | ${api.title} | ${api.method} | ${api.path} | ${api.catName} |\n`;
+        });
+
+        responseContent += "\n";
+      }
+    });
+
+    // 添加使用提示
+    responseContent += "\n提示: 可以使用 `yapi_get_api_desc` 工具获取接口的详细信息";
+
+    return {
+      content: [{ type: "text", text: responseContent }],
+    };
+  }
+
+  // 处理搜索错误的辅助方法
+  private handleSearchError(error: any, operation: string) {
+    let errorMsg = `${operation}时发生错误`;
+
+    if (error instanceof Error) {
+      errorMsg += `: ${error.message}`;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMsg += `: ${JSON.stringify(error)}`;
+    }
+
+    return {
+      content: [{ type: "text", text: errorMsg }],
+    };
+  }
+
   private registerTools(): void {
-    // 获取API接口详情
+    // 获取API接口详情 - 更新工具注册
     this.server.tool(
       "yapi_get_api_desc",
       "获取YApi中特定接口的详细信息",
@@ -318,121 +414,61 @@ export class YapiMcpServer {
       }
     );
 
-    // 搜索API接口
+
+    // 按接口名称关键字搜索
     this.server.tool(
-      "yapi_search_apis",
-      "搜索YApi中的接口",
+      "yapi_search_by_name",
+      "按接口名称关键字搜索YApi接口",
       {
+        nameKeyword: z.string().describe("接口名称关键字（必填）"),
         projectKeyword: z.string().optional().describe("项目关键字，用于过滤项目"),
-        nameKeyword: z.string().optional().describe("接口名称关键字"),
-        pathKeyword: z.string().optional().describe("接口路径关键字"),
-        tagKeyword: z.string().optional().describe("接口标签关键字"),
         limit: z.number().optional().describe("返回结果数量限制，默认20")
       },
-      async ({ projectKeyword, nameKeyword, pathKeyword, tagKeyword, limit }) => {
+      async ({ nameKeyword, projectKeyword, limit }) => {
         try {
           const searchOptions = {
+            nameKeyword,
             projectKeyword,
-            nameKeyword: nameKeyword ? nameKeyword.split(/[\s,]+/) : undefined,
-            pathKeyword: pathKeyword ? pathKeyword.split(/[\s,]+/) : undefined,
-            tagKeyword: tagKeyword ? tagKeyword.split(/[\s,]+/) : undefined,
             limit: limit || 20
           };
 
-          this.logger.info(`搜索API接口: ${JSON.stringify(searchOptions)}`);
-          const searchResults = await this.yapiService.searchApis(searchOptions);
+          this.logger.info(`按名称搜索API接口: ${JSON.stringify(searchOptions)}`);
+          const searchResults = await this.yapiService.searchApisByName(searchOptions);
 
-          // 按项目分组整理结果
-          const apisByProject: Record<string, {
-            projectName: string,
-            apis: Array<{
-              id: string,
-              title: string,
-              path: string,
-              method: string,
-              catName: string,
-              createTime: string,
-              updateTime: string
-            }>
-          }> = {};
-
-          // 格式化搜索结果
-          searchResults.list.forEach(api => {
-            const projectId = String(api.project_id);
-            const projectName = api.project_name || `未知项目(${projectId})`;
-
-            if (!apisByProject[projectId]) {
-              apisByProject[projectId] = {
-                projectName,
-                apis: []
-              };
-            }
-
-            apisByProject[projectId].apis.push({
-              id: api._id,
-              title: api.title,
-              path: api.path,
-              method: api.method,
-              catName: api.cat_name || '未知分类',
-              createTime: new Date(api.add_time).toLocaleString(),
-              updateTime: new Date(api.up_time).toLocaleString()
-            });
-          });
-
-          // 构建响应内容
-          let responseContent = `共找到 ${searchResults.total} 个符合条件的接口（已限制显示 ${searchResults.list.length} 个）\n\n`;
-
-          // 添加搜索条件说明
-          responseContent += "搜索条件:\n";
-          if (projectKeyword) responseContent += `- 项目关键字: ${projectKeyword}\n`;
-          if (nameKeyword) responseContent += `- 接口名称关键字: ${nameKeyword}\n`;
-          if (pathKeyword) responseContent += `- API路径关键字: ${pathKeyword}\n`;
-          if (tagKeyword) responseContent += `- 标签关键字: ${tagKeyword}\n\n`;
-
-          // 按项目分组展示结果
-          Object.values(apisByProject).forEach(projectGroup => {
-            responseContent += `## 项目: ${projectGroup.projectName} (${projectGroup.apis.length}个接口)\n\n`;
-
-            if (projectGroup.apis.length <= 10) {
-              // 少量接口，展示详细信息
-              projectGroup.apis.forEach(api => {
-                responseContent += `### ${api.title} (${api.method} ${api.path})\n\n`;
-                responseContent += `- 接口ID: ${api.id}\n`;
-                responseContent += `- 所属分类: ${api.catName}\n`;
-                responseContent += `- 更新时间: ${api.updateTime}\n\n`;
-              });
-            } else {
-              // 大量接口，展示简洁表格
-              responseContent += "| 接口ID | 接口名称 | 请求方式 | 接口路径 | 所属分类 |\n";
-              responseContent += "| ------ | -------- | -------- | -------- | -------- |\n";
-
-              projectGroup.apis.forEach(api => {
-                responseContent += `| ${api.id} | ${api.title} | ${api.method} | ${api.path} | ${api.catName} |\n`;
-              });
-
-              responseContent += "\n";
-            }
-          });
-
-          // 添加使用提示
-          responseContent += "\n提示: 可以使用 `get_api_desc` 工具获取接口的详细信息，例如: `get_api_desc projectId=228 apiId=8570`";
-
-          return {
-            content: [{ type: "text", text: responseContent }],
-          };
+          // 格式化响应
+          return this.formatSearchResults(searchResults, `接口名称关键字: ${nameKeyword}`, projectKeyword);
         } catch (error) {
-          this.logger.error(`搜索接口时出错:`, error);
-          let errorMsg = "搜索接口时发生错误";
+          this.logger.error(`按名称搜索接口时出错:`, error);
+          return this.handleSearchError(error, "按名称搜索接口");
+        }
+      }
+    );
 
-          if (error instanceof Error) {
-            errorMsg += `: ${error.message}`;
-          } else if (typeof error === 'object' && error !== null) {
-            errorMsg += `: ${JSON.stringify(error)}`;
-          }
-
-          return {
-            content: [{ type: "text", text: errorMsg }],
+    // 按接口路径关键字搜索
+    this.server.tool(
+      "yapi_search_by_path",
+      "按接口路径关键字搜索YApi接口",
+      {
+        pathKeyword: z.string().describe("接口路径关键字（必填）"),
+        projectKeyword: z.string().optional().describe("项目关键字，用于过滤项目"),
+        limit: z.number().optional().describe("返回结果数量限制，默认20")
+      },
+      async ({ pathKeyword, projectKeyword, limit }) => {
+        try {
+          const searchOptions = {
+            pathKeyword,
+            projectKeyword,
+            limit: limit || 20
           };
+
+          this.logger.info(`按路径搜索API接口: ${JSON.stringify(searchOptions)}`);
+          const searchResults = await this.yapiService.searchApisByPath(searchOptions);
+
+          // 格式化响应
+          return this.formatSearchResults(searchResults, `接口路径关键字: ${pathKeyword}`, projectKeyword);
+        } catch (error) {
+          this.logger.error(`按路径搜索接口时出错:`, error);
+          return this.handleSearchError(error, "按路径搜索接口");
         }
       }
     );
@@ -476,6 +512,7 @@ export class YapiMcpServer {
         }
       }
     );
+
 
     // 获取分类
     this.server.tool(
@@ -567,6 +604,108 @@ export class YapiMcpServer {
 
   async startHttpServer(port: number): Promise<void> {
     const app = express();
+
+    // 添加CORS支持
+    app.use((req: Request, res: Response, next) => {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+
+    // 添加JSON解析器
+    app.use(express.json());
+
+    // 添加简化的调试API端点
+    app.post("/api/debug", async (req: Request, res: Response) => {
+      try {
+        const { tool, args } = req.body;
+
+        if (!tool) {
+          return res.status(400).json({ error: "Missing tool parameter" });
+        }
+
+        let result;
+        switch (tool) {
+          case 'yapi_get_api_desc':
+            if (!args?.projectId || !args?.apiId) {
+              return res.status(400).json({ error: "Missing projectId or apiId" });
+            }
+            const apiInterface = await this.yapiService.getApiInterface(args.projectId, args.apiId);
+            result = {
+              基本信息: {
+                接口ID: apiInterface._id,
+                接口名称: apiInterface.title,
+                接口路径: apiInterface.path,
+                请求方式: apiInterface.method,
+                接口描述: apiInterface.desc
+              },
+              请求参数: {
+                URL参数: apiInterface.req_params,
+                查询参数: apiInterface.req_query,
+                请求头: apiInterface.req_headers,
+                请求体类型: apiInterface.req_body_type,
+                表单参数: apiInterface.req_body_form,
+                Json参数: apiInterface.req_body_other
+              },
+              响应信息: {
+                响应类型: apiInterface.res_body_type,
+                响应内容: apiInterface.res_body
+              }
+            };
+            break;
+          case 'yapi_search_by_name':
+            if (!args?.nameKeyword) {
+              return res.status(400).json({ error: "Missing nameKeyword" });
+            }
+            result = await this.yapiService.searchApisByName({
+              nameKeyword: args.nameKeyword,
+              projectKeyword: args?.projectKeyword,
+              limit: args?.limit || 20
+            });
+            break;
+          case 'yapi_search_by_path':
+            if (!args?.pathKeyword) {
+              return res.status(400).json({ error: "Missing pathKeyword" });
+            }
+            result = await this.yapiService.searchApisByPath({
+              pathKeyword: args.pathKeyword,
+              projectKeyword: args?.projectKeyword,
+              limit: args?.limit || 20
+            });
+            break;
+          case 'yapi_list_projects':
+            const projectIds = this.yapiService.getConfiguredProjectIds();
+            const projectInfoCache = this.yapiService.getProjectInfoCache();
+            const projects = projectIds.map(id => {
+              const info = projectInfoCache.get(id);
+              return {
+                项目ID: id,
+                项目名称: info?.name || `未知项目(${id})`,
+                项目描述: info?.desc || "无描述",
+                基础路径: info?.basepath || "/",
+                项目分组ID: info?.group_id
+              };
+            });
+            result = { projects, count: projects.length };
+            break;
+          default:
+            return res.status(400).json({ error: `Unknown tool: ${tool}` });
+        }
+
+        res.json({ success: true, data: result });
+      } catch (error) {
+        this.logger.error(`调试API错误:`, error);
+        res.status(500).json({
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    });
 
     app.get("/sse", async (req: Request, res: Response) => {
       this.logger.info("建立新的SSE连接");
