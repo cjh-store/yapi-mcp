@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/cjh-store/yapi-mcp/compare/v1.0.0...v1.0.1) (2025-09-26)
+
+### 📚 Documentation
+
+* 修复包名称并添加全局安装说明 ([9ceb9b2](https://github.com/cjh-store/yapi-mcp/commit/9ceb9b2dd82654ecfc37a507768a54ce89bab22e))
+
 ## 1.0.0 (2025-09-26)
 
 ### ✨ Features
