@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { IncomingMessage, ServerResponse } from "http";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
@@ -102,7 +102,7 @@ export class YapiMcpServer {
   }
 
   // 格式化搜索结果的辅助方法
-  private formatSearchResults(searchResults: any, searchCondition: string, projectKeyword?: string) {
+  private formatSearchResults(searchResults: any, searchCondition: string, projectKeyword?: string): any {
     // 按项目分组整理结果
     const apisByProject: Record<string, {
       projectName: string,
@@ -183,7 +183,7 @@ export class YapiMcpServer {
   }
 
   // 处理搜索错误的辅助方法
-  private handleSearchError(error: any, operation: string) {
+  private handleSearchError(error: any, operation: string): any {
     let errorMsg = `${operation}时发生错误`;
 
     if (error instanceof Error) {
@@ -436,10 +436,10 @@ export class YapiMcpServer {
           const searchResults = await this.yapiService.searchApisByName(searchOptions);
 
           // 格式化响应
-          return this.formatSearchResults(searchResults, `接口名称关键字: ${nameKeyword}`, projectKeyword);
+          return this.formatSearchResults(searchResults, `接口名称关键字: ${nameKeyword}`, projectKeyword) as any;
         } catch (error) {
           this.logger.error(`按名称搜索接口时出错:`, error);
-          return this.handleSearchError(error, "按名称搜索接口");
+          return this.handleSearchError(error, "按名称搜索接口") as any;
         }
       }
     );
@@ -465,10 +465,10 @@ export class YapiMcpServer {
           const searchResults = await this.yapiService.searchApisByPath(searchOptions);
 
           // 格式化响应
-          return this.formatSearchResults(searchResults, `接口路径关键字: ${pathKeyword}`, projectKeyword);
+          return this.formatSearchResults(searchResults, `接口路径关键字: ${pathKeyword}`, projectKeyword) as any;
         } catch (error) {
           this.logger.error(`按路径搜索接口时出错:`, error);
-          return this.handleSearchError(error, "按路径搜索接口");
+          return this.handleSearchError(error, "按路径搜索接口") as any;
         }
       }
     );
@@ -606,7 +606,7 @@ export class YapiMcpServer {
     const app = express();
 
     // 添加CORS支持
-    app.use((req: Request, res: Response, next) => {
+    app.use((req: any, res: any, next: any) => {
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
@@ -621,7 +621,7 @@ export class YapiMcpServer {
     app.use(express.json());
 
     // 添加简化的调试API端点
-    app.post("/api/debug", async (req: Request, res: Response) => {
+    app.post("/api/debug", async (req: any, res: any) => {
       try {
         const { tool, args } = req.body;
 

@@ -547,7 +547,7 @@ export class YApiService {
         const tagKeywords = queryParams.tag.map(t => t.toLowerCase());
         filteredResults = filteredResults.filter(item => {
           if (!item.tag || !Array.isArray(item.tag)) return false;
-          return item.tag.some(tag =>
+          return item.tag.some((tag: any) =>
             tagKeywords.some(keyword =>
               String(tag).toLowerCase().includes(keyword)
             )
