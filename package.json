@@ -22,14 +22,24 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "inspect": "pnpx @modelcontextprotocol/inspector",
     "prepare": "pnpm run build && chmod +x ./dist/cli.js",
-    "pub:release": "pnpm build && npm publish"
+    "pub:release": "pnpm build && npm publish",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
+    "test": "echo \"Tests not yet implemented\" && exit 0"
   },
   "engines": {
     "node": "^20.17.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lzsheng/Yapi-MCP.git"
+    "url": "https://github.com/cjh-store/yapi-mcp.git"
+  },
+  "homepage": "https://github.com/cjh-store/yapi-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/cjh-store/yapi-mcp/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "yapi",
@@ -61,14 +71,20 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.6",
+    "@semantic-release/npm": "^12.0.1",
     "@types/express": "^5.0.0",
     "@types/node": "^20.17.32",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
     "cross-env": "^7.0.3",
     "eslint": "^9.20.1",
     "eslint-config-prettier": "^10.0.1",
     "prettier": "^3.5.0",
+    "semantic-release": "^24.1.0",
     "tsc-alias": "^1.8.10",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
