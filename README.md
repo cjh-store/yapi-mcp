@@ -46,19 +46,28 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 
 ### 📥 安装方式
 
-**推荐方式：使用 npx（无需安装）**
+**方式一：全局安装（推荐）**
 
-1. **获取 YApi Token**：登录你的 YApi 平台，在项目设置中获取 Token
-2. **配置 Cursor**：在 Cursor 设置中添加 MCP 服务器：
+```bash
+# 全局安装
+npm install -g @cjh0/yapi-mcp
+
+# 或者使用 pnpm
+pnpm add -g @cjh0/yapi-mcp
+```
+
+**方式二：使用 npx（无需安装）**
+
+### 🔧 配置说明
+
+**全局安装后的配置：**
 
 ```json
 {
   "mcpServers": {
-    "yapi-auto-mcp": {
-      "command": "npx",
+    "yapi-mcp": {
+      "command": "yapi-mcp",
       "args": [
-        "-y",
-        "yapi-auto-mcp",
         "--stdio",
         "--yapi-base-url=https://your-yapi-domain.com",
         "--yapi-token=projectId:your_token_here"
@@ -68,45 +77,41 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 }
 ```
 
-3. **开始使用**：重启 Cursor，你就可以在对话中直接操作 YApi 了！
-
-## 安装配置
-
-### 方式一：npx 直接使用（推荐）
-
-无需本地安装，通过 npx 直接运行：
+**npx 方式的配置：**
 
 ```json
 {
   "mcpServers": {
-    "yapi-auto-mcp": {
+    "yapi-mcp": {
       "command": "npx",
       "args": [
         "-y",
-        "yapi-auto-mcp",
+        "@cjh0/yapi-mcp",
         "--stdio",
-        "--yapi-base-url=https://yapi.example.com",
-        "--yapi-token=projectId:token1,projectId2:token2",
-        "--yapi-cache-ttl=10",
-        "--yapi-log-level=info"
+        "--yapi-base-url=https://your-yapi-domain.com",
+        "--yapi-token=projectId:your_token_here"
       ]
     }
   }
 }
 ```
 
-### 方式二：使用环境变量
+**开始使用**：重启 Cursor，你就可以在对话中直接操作 YApi 了！
+
+## 高级配置
+
+### 使用环境变量
 
 在 MCP 配置中定义环境变量：
 
 ```json
 {
   "mcpServers": {
-    "yapi-auto-mcp": {
+    "yapi-mcp": {
       "command": "npx",
       "args": [
         "-y",
-        "yapi-auto-mcp",
+        "@cjh0/yapi-mcp",
         "--stdio"
       ],
       "env": {
@@ -120,7 +125,7 @@ Yapi Auto MCP Server 是一个基于 [Model Context Protocol](https://modelconte
 }
 ```
 
-### 方式三：本地开发模式
+### 本地开发模式
 
 适合需要修改代码或调试的场景：
 
@@ -253,10 +258,10 @@ YAPI_LOG_LEVEL=info         # 日志级别：debug, info, warn, error, none
 
 | 使用场景 | 推荐方式              | 优势               |
 | -------- | --------------------- | ------------------ |
-| 日常使用 | npx + 命令行参数      | 无需安装，配置简单 |
+| 个人使用 | 全局安装              | 启动快速，无需网络 |
 | 团队共享 | npx + 环境变量        | 配置统一，易于管理 |
-| 开发调试 | 本地安装 + SSE 模式   | 便于调试和修改代码 |
-| 企业部署 | 本地安装 + stdio 模式 | 性能更好，更稳定   |
+| 临时使用 | npx + 命令行参数      | 无需安装，配置简单 |
+| 开发调试 | 本地开发 + SSE 模式   | 便于调试和修改代码 |
 
 ## 🚀 发布与贡献
 
